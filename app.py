@@ -14,34 +14,86 @@ def bot():
     msg = resp.message()
     responded = False
 
-    for each in ['hi', 'hello', 'hey']:
-        if each in incoming_msg:
-            msg.body('Hi there! I am a bot that gives you the latest Covid-19 stats from around the world.')
-            responded = True
-            break
+    url = 'https://www.worldometers.info/coronavirus/'
+    doc = get_document(url)
+    # response = requests.get('https://www.worldometers.info/coronavirus/')
+    # doc = html.fromstring(response.content)
 
-    response = requests.get('https://www.worldometers.info/coronavirus/')
-    doc = html.fromstring(response.content)
-    total, deaths, recovered = doc.xpath('//div[@class="maincounter-number"]/span/text()')
+    country_relative_paths = doc.xpath(
+        '//table[@id="main_table_countries_today"]/tbody/tr/td[1]/a[contains(@href, "country/")]/@href')
 
-    body = f'''Coronavirus Latest Updates
-            Total cases: {total}
-            Recovered: {recovered}
-            Deaths: {deaths}
-            Source: https://www.worldometers.info/coronavirus/
-        '''
-    if 'world' in incoming_msg:
-        # return global cases  till today
-        msg.body(body)
+    country_absolute_paths = ['https://www.worldometers.info/coronavirus/' + each for each in country_relative_paths]
+    country_absolute_paths.append(url)
+
+    country_names = doc.xpath(
+        '//table[@id="main_table_countries_today"]/tbody/tr/td[1]/a[contains(@href, "country/")]/text()')
+    country_names = [each.lower() for each in country_names]
+    country_names.append('world')
+
+    # total, deaths, recovered = doc.xpath('//div[@class="maincounter-number"]/span/text()')
+    total, deaths, recovered = [0, 0, 0]
+    country = None
+
+    welcome_message = f'''
+            Hi there! I am a bot that gives you the latest stats on Covid-19 cases from around the world.
+-Type *world* to get the latest global Covid-19 stats.
+-Type the name of a country to get it's latest Covid-19 stats.
+-Type *nearby* to know how far you are from the latest detected Covid-19 case near you.
+'''
+
+    help_message = f'''
+                Say *hi* to begin an interaction with me anytime.
+-Type *world* to get the latest global Covid-19 stats.
+-Type the name of a country to get it's latest Covid-19 stats.
+-Type *nearby* to know how far you are from the latest detected Covid-19 case near you.
+'''
+
+    fallback_message = 'Sorry, I did not quite get that. Type *help* to learn how to interact with me.'
+
+    greeting_tokens = ['hi', 'hello', 'hey']
+    if incoming_msg in greeting_tokens:
+        msg.body(welcome_message)
         responded = True
+
+    if incoming_msg in country_names:
+        # return cases
+        country = incoming_msg
+        i = country_names.index(country)
+        url = country_absolute_paths[i]
+        doc = get_document(url)
+        # total, deaths, recovered = doc.xpath('//div[@class="maincounter-number"]/span/text()')
+        data_message = get_data_message(country, url, doc)
+        msg.body(data_message)
+        responded = True
+
     if 'help' in incoming_msg:
-        # return global cases  till today
-        msg.body('Type *world* to get the cumulative global cases so far.')
+        # return help message
+        msg.body(help_message)
         responded = True
+
     if not responded:
         msg.body('Sorry, I did not quite get that. Type *help* to learn how to interact with me.')
 
     return str(resp)
+
+
+def get_document(url):
+    response = requests.get(url)
+    doc = html.fromstring(response.content)
+    return doc
+
+
+def get_data_message(country, url, doc):
+    total, deaths, recovered = doc.xpath('//div[@class="maincounter-number"]/span/text()')
+    data_message = f'''
+                    *Latest global Covid-19 cases from {country}*
+Total cases: {total}
+Recovered: {recovered}
+Deaths: {deaths}
+
+View more: {url}
+'''
+    return data_message
 
 
 if __name__ == '__main__':
