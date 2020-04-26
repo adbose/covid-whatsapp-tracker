@@ -16,8 +16,6 @@ def bot():
 
     url = 'https://www.worldometers.info/coronavirus/'
     doc = get_document(url)
-    # response = requests.get('https://www.worldometers.info/coronavirus/')
-    # doc = html.fromstring(response.content)
 
     country_relative_paths = doc.xpath(
         '//table[@id="main_table_countries_today"]/tbody/tr/td[1]/a[contains(@href, "country/")]/@href')
@@ -30,22 +28,17 @@ def bot():
     country_names = [each.lower() for each in country_names]
     country_names.append('world')
 
-    # total, deaths, recovered = doc.xpath('//div[@class="maincounter-number"]/span/text()')
-    total, deaths, recovered = [0, 0, 0]
-    country = None
-
     welcome_message = f'''
             Hi there! I am a bot that gives you the latest stats on Covid-19 cases from around the world.
 -Type *world* to get the latest global Covid-19 stats.
 -Type the name of a country to get it's latest Covid-19 stats.
--Type *nearby* to know how far you are from the latest detected Covid-19 case near you.
+-Type *help* to to learn how to interact with me.
 '''
 
     help_message = f'''
                 Say *hi* to begin an interaction with me anytime.
 -Type *world* to get the latest global Covid-19 stats.
 -Type the name of a country to get it's latest Covid-19 stats.
--Type *nearby* to know how far you are from the latest detected Covid-19 case near you.
 '''
 
     fallback_message = 'Sorry, I did not quite get that. Type *help* to learn how to interact with me.'
@@ -61,7 +54,6 @@ def bot():
         i = country_names.index(country)
         url = country_absolute_paths[i]
         doc = get_document(url)
-        # total, deaths, recovered = doc.xpath('//div[@class="maincounter-number"]/span/text()')
         data_message = get_data_message(country, url, doc)
         msg.body(data_message)
         responded = True
@@ -86,7 +78,7 @@ def get_document(url):
 def get_data_message(country, url, doc):
     total, deaths, recovered = doc.xpath('//div[@class="maincounter-number"]/span/text()')
     data_message = f'''
-                    *Latest global Covid-19 cases from {country}*
+                    *Latest Covid-19 cases from {country.title()}*
 Total cases: {total}
 Recovered: {recovered}
 Deaths: {deaths}
